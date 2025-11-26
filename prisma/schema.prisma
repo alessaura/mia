@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id              String   @id @default(uuid())
+  clientName      String
+  firstName       String
+  documentType    String   // "CPF" ou "CNPJ"
+  documentHash    String?  // Hash do documento (nunca armazenar em texto plano)
+  segment         String?  // "prime", "classic", "basic"
+  riskLevel       String   @default("low")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  conversations   Conversation[]
+  
+  @@index([documentHash])
+}
+
+model Conversation {
+  id                    String   @id @default(uuid())
+  customerId            String
+  customer              Customer @relation(fields: [customerId], references: [id])
+  
+  channel               String   // "whatsapp", "chat", "sms"
+  sessionId             String   @unique
+  state                 String   @default("GREETING") // State machine
+  
+  validationAttempts    Int      @default(0)
+  isValidated           Boolean  @default(false)
+  
+  lastMessageAt         DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  closedAt              DateTime?
+  
+  messages              Message[]
+  metrics               ConversationMetric?
+  
+  @@index([sessionId])
+  @@index([customerId])
+}
+
+model Message {
+  id              String       @id @default(uuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id])
+  
+  role            String       // "user", "assistant", "system"
+  content         String       @db.Text
+  template        String?      // Nome do template usado (se aplicável)
+  
+  metadata        Json?        // Dados adicionais (function calls, etc.)
+  
+  createdAt       DateTime     @default(now())
+  
+  @@index([conversationId])
+}
+
+model ConversationMetric {
+  id                      String       @id @default(uuid())
+  conversationId          String       @unique
+  conversation            Conversation @relation(fields: [conversationId], references: [id])
+  
+  totalMessages           Int          @default(0)
+  validationTime          Int?         // Tempo até validação (segundos)
+  completionTime          Int?         // Tempo total (segundos)
+  
+  hadReengage             Boolean      @default(false)
+  reengageCount           Int          @default(0)
+  
+  hadJailbreakAttempt     Boolean      @default(false)
+  jailbreakType           String?
+  
+  validatedFirstAttempt   Boolean      @default(false)
+  
+  npsScore                Int?         // 0-10
+  
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+}
+
+model ValidationLog {
+  id              String   @id @default(uuid())
+  sessionId       String
+  documentHash    String
+  documentType    String
+  isValid         Boolean
+  errorCode       String?
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime @default(now())
+  
+  @@index([sessionId])
+  @@index([documentHash])
+  @@index([createdAt])
+}

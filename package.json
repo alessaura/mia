@@ -1,0 +1,56 @@
+{
+  "name": "mia-api",
+  "version": "1.0.0",
+  "main": "src/server.ts",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "build": "tsc",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/handlebars": "^4.0.40",
+    "@types/node": "^24.10.1",
+    "@types/redis": "^4.0.10",
+    "@types/supertest": "^6.0.3",
+    "@types/uuid": "^10.0.0",
+    "@vitest/ui": "^4.0.14",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@sentry/node": "^10.27.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.3.1",
+    "handlebars": "^4.7.8",
+    "helmet": "^8.1.0",
+    "openai": "^6.9.1",
+    "prisma": "^5.22.0",
+    "redis": "^5.10.0",
+    "uuid": "^13.0.0",
+    "winston": "^3.18.3",
+    "zod": "^4.1.13"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

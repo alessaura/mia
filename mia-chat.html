@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat · Mia – Banco Nova Era</title>
+
+  <!-- Fonte fofinha porém adulta -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #ffeef5 0, #f4f6fb 35%, #f7fafc 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #1f2933;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 520px;
+      padding: 16px;
+    }
+
+    .chat-card {
+      background: #ffffff;
+      border-radius: 24px;
+      box-shadow:
+        0 18px 40px rgba(15, 23, 42, 0.08),
+        0 0 0 1px rgba(148, 163, 184, 0.08);
+      padding: 18px 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Header */
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed rgba(148, 163, 184, 0.6);
+    }
+
+    .mia-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 20%, #ffe3f0 0, #f472b6 30%, #ec4899 60%, #db2777 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fdf2f8;
+      font-weight: 600;
+      font-size: 16px;
+      box-shadow: 0 10px 18px rgba(236, 72, 153, 0.4);
+    }
+
+    .header-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #111827;
+      letter-spacing: 0.02em;
+    }
+
+    .header-subtitle {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .state-pill {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      color: #4b5563;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .state-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #10b981;
+    }
+
+    .session-mini {
+      font-size: 10px;
+      color: #9ca3af;
+      max-width: 170px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* Customer row */
+
+    .customer-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 2px;
+    }
+
+    .customer-row label {
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .customer-row input {
+      flex: 1;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      font-size: 11px;
+      background: #f9fafb;
+      color: #111827;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .customer-row input:focus {
+      outline: none;
+      border-color: #ec4899;
+      box-shadow: 0 0 0 1px rgba(236, 72, 153, 0.35);
+      background: #ffffff;
+    }
+
+    /* Chat log */
+
+    .chat-log {
+      margin-top: 4px;
+      padding: 10px 10px 8px;
+      border-radius: 18px;
+      background: #faf5ff;
+      border: 1px solid rgba(216, 180, 254, 0.7);
+      min-height: 260px;
+      max-height: 320px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scroll-behavior: smooth;
+    }
+
+    .chat-log-empty-hint {
+      font-size: 12px;
+      color: #7c3aed;
+      text-align: center;
+      margin-top: 40px;
+      opacity: 0.85;
+    }
+
+    .message-row {
+      display: flex;
+      width: 100%;
+    }
+
+    .message-bubble {
+      max-width: 80%;
+      padding: 8px 11px;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.4;
+      word-wrap: break-word;
+      position: relative;
+    }
+
+    .message-bubble.mia {
+      background: #ffffff;
+      border: 1px solid rgba(216, 180, 254, 0.7);
+      border-bottom-left-radius: 4px;
+      color: #374151;
+    }
+
+    .message-bubble.user {
+      margin-left: auto;
+      background: linear-gradient(135deg, #ec4899, #f97316);
+      color: #fefce8;
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 8px 18px rgba(249, 115, 22, 0.4);
+    }
+
+    .message-meta {
+      font-size: 10px;
+      opacity: 0.7;
+      margin-top: 3px;
+    }
+
+    .message-meta span {
+      opacity: 0.85;
+    }
+
+    /* Input row */
+
+    .chat-input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      align-items: flex-end;
+    }
+
+    .chat-input-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .chat-input-wrapper label {
+      font-size: 11px;
+      color: #6b7280;
+      padding-left: 6px;
+    }
+
+    .chat-input {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      font-size: 13px;
+      color: #111827;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: #ec4899;
+      background: #ffffff;
+      box-shadow: 0 0 0 1px rgba(236, 72, 153, 0.35);
+    }
+
+    .send-button {
+      padding: 9px 16px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      background: linear-gradient(135deg, #ec4899, #f97316);
+      color: #fdf2f8;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 10px 22px rgba(236, 72, 153, 0.45);
+      transition: transform 0.06s ease, box-shadow 0.06s ease, opacity 0.12s ease;
+      white-space: nowrap;
+    }
+
+    .send-button svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .send-button:disabled {
+      opacity: 0.55;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .send-button:not(:disabled):active {
+      transform: translateY(1px);
+      box-shadow: 0 4px 12px rgba(236, 72, 153, 0.55);
+    }
+
+    .footer-note {
+      margin-top: 6px;
+      font-size: 10px;
+      text-align: right;
+      color: #9ca3af;
+    }
+
+    .footer-note span {
+      color: #ec4899;
+      font-weight: 500;
+    }
+
+    /* Scrollbar bonitinha no chat */
+
+    .chat-log::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-log::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chat-log::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.7);
+      border-radius: 999px;
+    }
+
+    .chat-log::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.95);
+    }
+
+    @media (max-width: 600px) {
+      .chat-card {
+        border-radius: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="chat-card">
+      <div class="chat-header">
+        <div class="mia-avatar">M</div>
+        <div class="header-text">
+          <div class="header-title">Mia</div>
+          <div class="header-subtitle">Assistente · Banco Nova Era</div>
+        </div>
+
+        <div class="header-right">
+          <div class="state-pill">
+            <span class="state-dot"></span>
+            <span id="state-label">—</span>
+          </div>
+          <div id="session-label" class="session-mini">
+            sessão não iniciada
+          </div>
+        </div>
+      </div>
+
+      <div class="customer-row">
+        <label for="customer-id-input">ID do cliente</label>
+        <input
+          id="customer-id-input"
+          type="text"
+          value="cust-ale"
+          autocomplete="off"
+        />
+      </div>
+
+      <div id="chat-log" class="chat-log">
+        <div id="empty-hint" class="chat-log-empty-hint">
+          Comece dizendo <strong>"oi"</strong> para a Mia 💬
+        </div>
+      </div>
+
+      <div class="chat-input-row">
+        <div class="chat-input-wrapper">
+          <label for="message-input">Mensagem</label>
+          <input
+            id="message-input"
+            type="text"
+            class="chat-input"
+            placeholder="Escreva sua mensagem para a Mia..."
+          />
+        </div>
+        <button id="send-button" class="send-button">
+          <span>Enviar</span>
+          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 10L17 3L13 10L17 17L3 10Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="footer-note">
+        Sessão gerenciada por <span>Mia API</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:3000/api/v1/conversation/message";
+
+    let sessionId = null;
+
+    const chatLog = document.getElementById("chat-log");
+    const emptyHint = document.getElementById("empty-hint");
+    const messageInput = document.getElementById("message-input");
+    const sendButton = document.getElementById("send-button");
+    const customerIdInput = document.getElementById("customer-id-input");
+    const stateLabel = document.getElementById("state-label");
+    const sessionLabel = document.getElementById("session-label");
+
+    function clearHint() {
+      if (emptyHint && emptyHint.parentNode) {
+        emptyHint.parentNode.removeChild(emptyHint);
+      }
+    }
+
+    function appendMessage(text, who = "mia", meta = "") {
+      clearHint();
+
+      const row = document.createElement("div");
+      row.classList.add("message-row");
+
+      const bubble = document.createElement("div");
+      bubble.classList.add("message-bubble", who);
+
+      const content = document.createElement("div");
+      content.textContent = text;
+      bubble.appendChild(content);
+
+      if (meta) {
+        const metaDiv = document.createElement("div");
+        metaDiv.classList.add("message-meta");
+        metaDiv.innerHTML = meta;
+        bubble.appendChild(metaDiv);
+      }
+
+      row.appendChild(bubble);
+      chatLog.appendChild(row);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function setStateLabel(state) {
+      stateLabel.textContent = state || "—";
+    }
+
+    function setSessionLabel(id) {
+      if (!id) {
+        sessionLabel.textContent = "sessão não iniciada";
+        return;
+      }
+      const short = id.length > 20 ? id.slice(0, 20) + "..." : id;
+      sessionLabel.textContent = "sessão: " + short;
+    }
+
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      const customerId = customerIdInput.value.trim();
+
+      if (!text) return;
+
+      if (!customerId) {
+        alert("Preencha o ID do cliente (customerId).");
+        return;
+      }
+
+      appendMessage(text, "user");
+      messageInput.value = "";
+      messageInput.focus();
+      sendButton.disabled = true;
+
+      try {
+        const payload = sessionId
+          ? { sessionId, message: text, customerId }
+          : { customerId, message: text };
+
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          appendMessage(
+            data.error || "A Mia teve um problema ao responder.",
+            "mia",
+            '<span>erro</span>'
+          );
+          console.error("Erro da API:", data);
+          return;
+        }
+
+        if (data.sessionId) {
+          sessionId = data.sessionId;
+          setSessionLabel(sessionId);
+        }
+
+        if (data.state) {
+          setStateLabel(data.state);
+        }
+
+        appendMessage(
+          data.response || "(a Mia não retornou conteúdo)",
+          "mia"
+        );
+      } catch (err) {
+        console.error(err);
+        appendMessage(
+          "Não consegui falar com a API da Mia. Verifique se ela está rodando em localhost:3000.",
+          "mia",
+          '<span>erro de rede</span>'
+        );
+      } finally {
+        sendButton.disabled = false;
+      }
+    }
+
+    sendButton.addEventListener("click", sendMessage);
+
+    messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // foca no input assim que abrir
+    window.addEventListener("load", () => {
+      messageInput.focus();
+    });
+  </script>
+</body>
+</html>
