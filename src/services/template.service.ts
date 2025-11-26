@@ -49,8 +49,6 @@ class TemplateService {
     const template = this.templates.get(name);
 
     if (!template) {
-      // antes você jogava `throw new Error("Template 'greeting' not found")`
-      // que derrubava a MIA inteira. Vamos ser mais gentis:
       logger.warn(`Template "${name}" not found. Using fallback.`);
       return `[${name}] ` + JSON.stringify(data);
     }
