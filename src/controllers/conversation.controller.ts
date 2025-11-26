@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
-import { sessionService, SessionData, ConversationState } from '../services/session.service';
-import { llmService } from '../services/llm.service';
+import {
+  sessionService,
+  SessionData,
+  ConversationState,
+} from '../services/session.service';
 import { validationService } from '../services/validation.service';
 import { templateService } from '../services/template.service';
 import { logger } from '../utils/logger';
@@ -54,7 +57,7 @@ export class ConversationController {
 
       switch (session.state) {
         case 'GREETING': {
-          // Primeiro contato: só dá o texto de boas-vindas e já muda pra CONFIRM_NAME
+          // Primeiro contato: saudação + confirmação de nome
           responseText = await this.handleGreeting(session);
 
           nextState = 'CONFIRM_NAME';
@@ -62,15 +65,17 @@ export class ConversationController {
             state: nextState,
           });
 
-          // também atualiza o objeto em memória pra resposta ficar coerente
           session = { ...session, state: nextState };
           break;
         }
 
         case 'CONFIRM_NAME': {
           if (!message || typeof message !== 'string') {
-            // Sem mensagem útil — repete algo amigável (pode trocar template)
-            responseText = templateService.render('greeting', session.templateData);
+            // Sem mensagem útil — repete a saudação
+            responseText = templateService.render(
+              'greeting',
+              session.templateData
+            );
             nextState = session.state;
             break;
           }
@@ -94,8 +99,11 @@ export class ConversationController {
             break;
           }
 
-          const { response, nextState: computedState, attempts } =
-            await this.handleDocumentRequest(session, message);
+          const {
+            response,
+            nextState: computedState,
+            attempts,
+          } = await this.handleDocumentRequest(session, message);
 
           responseText = response;
           nextState = computedState;
@@ -107,10 +115,84 @@ export class ConversationController {
           break;
         }
 
-        // Outros estados (VALIDATED, CLOSED etc.) podem ser tratados aqui
+          case 'VALIDATED': {
+            // Se por algum motivo chegar aqui sem mensagem (não é o comum), só repete o sucesso
+            if (!message || typeof message !== 'string') {
+              responseText = templateService.render(
+                'validation-success',
+                session.templateData
+              );
+              nextState = session.state;
+              break;
+            }
+
+            const lower = message.toLowerCase();
+
+            if (lower.includes('cartao') || lower.includes('cartão')) {
+              responseText =
+                `Ótima escolha, ${session.templateData.firstName}! 💳\n\n` +
+                `Nesta simulação, eu só validei sua identidade, ` +
+                `mas aqui é onde o fluxo real mostraria as opções de cartão de crédito ` +
+                `do ${session.templateData.companyName}.`;
+            } else if (
+              lower.includes('emprestimo') ||
+              lower.includes('empréstimo') ||
+              lower.includes('financiamento')
+            ) {
+              responseText =
+                `Perfeito, ${session.templateData.firstName}! 📊\n\n` +
+                `Nesta demo, eu paro na etapa de validação, ` +
+                `mas aqui é onde eu apresentaria as condições de empréstimo e financiamento ` +
+                `personalizadas para você.`;
+            } else if (lower.includes('invest') || lower.includes('investimento')) {
+              responseText =
+                `Adorei, ${session.templateData.firstName}! 📈\n\n` +
+                `No fluxo completo, esta parte mostraria oportunidades de investimento ` +
+                `adaptadas ao seu perfil. Na nossa simulação, eu fico só na validação mesmo.`;
+            } else if (lower.includes('seguro')) {
+              responseText =
+                `Muito bem, ${session.templateData.firstName}! 🛡️\n\n` +
+                `Aqui é onde, em produção, eu traria opções de seguros do ${session.templateData.companyName}. ` +
+                `Na versão de teste, a gente encerra depois da validação.`;
+            } else {
+              // Mensagem qualquer depois de validado
+              responseText =
+                `${session.templateData.firstName}, sua identidade já foi validada ✅\n\n` +
+                `Essa simulação da Mia é focada só na etapa de validação de CPF/CNPJ. ` +
+                `No fluxo real, a partir daqui eu seguiria com a oferta de produtos. 😉`;
+            }
+
+            nextState = 'CLOSED';
+            await sessionService.updateSession(currentSessionId, {
+              state: nextState,
+            });
+            session = { ...session, state: nextState };
+            break;
+          }
+
+
+        case 'CLOSED': {
+          // Conversa já encerrada: responde algo neutro ou reinicia
+          responseText = templateService.render(
+            'timeout-end',
+            session.templateData
+          );
+          nextState = 'CLOSED';
+          break;
+        }
+
         default: {
-          responseText = templateService.render('greeting', session.templateData);
-          nextState = 'GREETING';
+          // Qualquer outro estado estranho, volta pro começo
+          logger.warn('Unknown conversation state, resetting.', {
+            state: session.state,
+            sessionId: currentSessionId,
+          });
+
+          responseText = templateService.render(
+            'greeting',
+            session.templateData
+          );
+          nextState = 'CONFIRM_NAME';
 
           await sessionService.updateSession(currentSessionId, {
             state: nextState,
@@ -150,10 +232,13 @@ export class ConversationController {
     session: SessionData,
     message: string
   ): Promise<{ response: string; nextState: ConversationState }> {
-    const affirmative = /^(sim|s|yes|y|isso|correto)$/i.test(message.trim());
+    const normalized = message.trim().toLowerCase();
+
+    const affirmative =
+      /^(sim|s|yes|y|isso|correto|sou eu|sou)$/.test(normalized);
+    const negative = /^(não|nao|n|no|não sou|nao sou)$/i.test(normalized);
 
     if (affirmative) {
-      // Cliente confirmou — pedir documento
       await sessionService.updateSession(session.sessionId, {
         state: 'REQUEST_DOCUMENT',
       });
@@ -167,8 +252,9 @@ export class ConversationController {
         response,
         nextState: 'REQUEST_DOCUMENT',
       };
-    } else {
-      // Não é o cliente / não confirmou — encerra
+    }
+
+    if (negative) {
       await sessionService.updateSession(session.sessionId, {
         state: 'CLOSED',
       });
@@ -183,6 +269,20 @@ export class ConversationController {
         nextState: 'CLOSED',
       };
     }
+
+    // Resposta ambígua → reforça a pergunta
+    const response = templateService.render(
+      'greeting',
+      session.templateData
+    );
+    return {
+      response,
+      nextState: 'CONFIRM_NAME',
+    };
+  }
+
+  private sanitizeDocument(raw: string): string {
+    return raw.replace(/\D/g, '');
   }
 
   private async handleDocumentRequest(
@@ -193,9 +293,55 @@ export class ConversationController {
     nextState: ConversationState;
     attempts: number;
   }> {
+    const cleanDocument = this.sanitizeDocument(message);
+    const isCPF = session.templateData.isCPF;
+
+    // Validação básica de formato antes de chamar o serviço
+    if (
+      !cleanDocument ||
+      (isCPF && cleanDocument.length !== 11) ||
+      (!isCPF && cleanDocument.length !== 14)
+    ) {
+      const attempts = (session.validationAttempts ?? 0) + 1;
+
+      if (attempts >= 3) {
+        await sessionService.updateSession(session.sessionId, {
+          state: 'CLOSED',
+          validationAttempts: attempts,
+        });
+
+        const response = templateService.render(
+          'validation-exceeded',
+          session.templateData
+        );
+
+        return {
+          response,
+          nextState: 'CLOSED',
+          attempts,
+        };
+      }
+
+      await sessionService.updateSession(session.sessionId, {
+        validationAttempts: attempts,
+      });
+
+      const response = templateService.render(
+        'validation-failure',
+        session.templateData
+      );
+
+      return {
+        response,
+        nextState: 'REQUEST_DOCUMENT',
+        attempts,
+      };
+    }
+
+    // Chama validação real
     const result = await validationService.validateCustomer(
-      message,
-      session.templateData.isCPF ? 'CPF' : 'CNPJ',
+      cleanDocument,
+      isCPF ? 'CPF' : 'CNPJ',
       session.conversationId,
       session.templateData.clientName
     );
